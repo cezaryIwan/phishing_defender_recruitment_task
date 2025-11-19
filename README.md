@@ -9,6 +9,9 @@ sms message - message in json format send to appliction API, with scheme:
 }
 message - the actual content of sms message in txt format (<BODY_OF_MESSAGE>)
 
+The client outline:
+In this hypothetical scenario, client is said to be a group of banks, that reach out to me (a operator telekomunikacyjny) to act as a middleman in handling malicious sms messages, for their individual clients - one phone number is treated as a singular, individual client.
+
 Main functionalities:
 1. Phishing detector:
 Every message that goes through system, assuming that client subscribies to service, is checked if it contains a URI. If it does, this URI is validated against Web Risk Google API and if it returns info that it is a phishing/malicious link, sms message is not store in database.
@@ -27,31 +30,17 @@ The service is responsible for storing of filtered messages. The client of given
 
 My assumptions:
 - solution should be as cost efficcient as it can, because it probably gonna scale much
-- solution should be prepared to scale easily, so maybe kafka
-- as one of notions in task, there was info that client wants it to be spined up quickly and to be cheap to 
-maintain, so app should be readible and easy to understand for developers
-- maybe I should separate full dev container with testing and container for production, but prolly not
+- solution should be prepared to scale easily - preferably scale out - and be rather lightweigt, to limit future costs when scaled
+- app should be fairly readible and easy to understand and maintain for hypothetical future developers, should limit itself to main scenario but be prepared to do it properly, should be easy to spin up quickly and pushed to prod quickly
+- service is responsible for storing every validated message in database
+- this application is treated as mvp, that should be prepared for future expansion
 
+Database schema:
+- Subscribers table for storing telephone numbers of subscribers
+- SMS table for storing validated sms messages in original format
 
-main functionality:
-- accepts requests with json of sms message
-- checks if receiver number subscribes to phishing defender
-- if not, stores message in DB 
-- if yes, validates againts phishing interface, this google thingy
-- if it does not validates -> does not store message
-- else -> stores message
-
-subscribing functionality:
-- takes message like 
-{
-    sender: 99999999,
-    receiver: SPECIAL_HARDCODED_NUMBER
-    message: START/STOP
-}
-- stores number if started
-- deltes number if stoped
-
-will need two tables:
-- one to store messages
-- one to store phone numbers that subscribes to defender
-
+Tech stack/tools that I used and why:
+- Java language - it's the JVM language that I have most expierience with
+- as a core Kafka Streams - the use case seems to be perfect for a stream tool -> it would benefit from being handled asynchroniously, hignly available and prepared for scaling out. I chose Kafka, since it integrates well with Java, was listed as one of technologies in job offer and I recently been working with Kafka on my data engineering program.
+- Redis database - simmilary to Kafka, Redis seems ideal for such a use case of event-driven architecture -> I plan to keep only two tables, so there's no need for relational database. Redis is low latency, which SMS processing system values. High-performant for read/write operations(those the only ones I would really need). Good for caching, which would be the first issue to address after completing MVP of application, in my opinion. Is easier to implement than SQL DBs.
+- TODO: choose testing tools
