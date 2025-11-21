@@ -111,54 +111,61 @@ Each client is guaranteed that all non-malicious SMS messages are persisted.
 It's the JVM language that I have most expierience with.
 
 ### Kafka Streams
-The use case seems to be perfect for a stream tool:
-- it would benefit from being handled asynchroniously, hignly available and prepared for scaling out
-- I chose Kafka, since it integrates well with Java, was listed as one of technologies in job offer and I recently been working with Kafka on my data engineering program.
+The use case (especially taking under consideration growing subscribers' quantity) seems to be perfect for a stream tool:
+- it would benefit from being handled asynchroniously
+- it asks for  high availability and scaling out -> since application is treated as MVP, I did not apply these two notions, to save my PC some resources - this way I also can omit orchestration tool such as k8s
+I chose Kafka, since it integrates well with Java, was listed as one of technologies in job offer and I recently been working with Kafka on my data engineering program.
 
-### Redis
-simmilary to Kafka, Redis seems ideal for such a use case of event-driven architecture:
-- only two tables are required, so no need for a relational DB  
-- low latency is ideal for SMS processing  
-- high performance for simple read/write operations  
-- good fit for future caching features  
-- easier to implement for the MVP than SQL databases
-- Redis was also listed as one of technologies in job offer
+### MongoDB
+Similarly to Kafka, MongoDB seems ideal for such a use case:
+- Document-based structure perfect for JSON messages
+- Persistent storage by default
+- Easily scalable
+- Good support for Java
+- High performance for read/write operations
+- Natural fit for event-driven architecture
 
 **TODO:** choose testing tools
 
 ### Docker
 For running the app.
 
-### K3S
-For running Kafka and Zookeper. I chose it instead of K8s, since it will be more forgiving for my PC and I also plan for default setup only 1 pod for each tool. This way I resign from HA, but it's fairly easy to add more pods and therefore ensuring HA, in the same time for development I won't be testing for huge amounts of data.
 
 ## Database Schema
 
-### subscribers
-| field        | type   | description               |
-|--------------|--------|---------------------------|
-| phone_number | string | unique client identifier  |
+### subscribers collection
+```json
+{
+    "_id": ObjectId,
+    "phoneNumber": "string"  // indexed
+}
+```
 
-### sms
-| field     | type     | description                           |
-|-----------|----------|----------------------------------------|
-| sender    | string   | sender phone number                    |
-| receiver  | string   | receiver phone number                  |
-| message   | string   | full SMS body                          |
-| timestamp | datetime | time of processing (optional, MVP)     |
-
+### messages collection
+```json
+{
+    "_id": ObjectId,
+    "sender": "string",
+    "receiver": "string",    // indexed
+    "message": "string",
+    "timestamp": "date"
+}
+```
 ---
 
 ## Main areas for future improvements
+- introducing high availability with e.g. k8s and more kafka instances
 - Cache URL validation results to reduce Google API cost
 - Performance tuning for high load
 - Monitoring & alerting
 - Message processing metrics
+- More descriptive status messages for controller
+- GUI/CLI for communication with backend
 
 ---
 
 ## How to Run
-
+  
 > **TODO:** Add Docker setup instructions and example commands.
 
 ---
