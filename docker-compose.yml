@@ -1,0 +1,68 @@
+services:
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://kafka:29093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_REPLICATION_FACTOR: 1
+      CLUSTER_ID: NnV5ZXZqQkqWc34Wqb4Y0g==
+      KAFKA_LOG4J_ROOT_LOGLEVEL: "WARN"
+      KAFKA_LOG4J_LOGGERS: "org.apache.kafka.clients.consumer.ConsumerConfig=WARN,kafka.controller=WARN,kafka.server.KafkaConfig=WARN"
+      KAFKA_TOOLS_LOG4J_LOGLEVEL: "ERROR"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+      - ./init-topic.sh:/etc/kafka/init-topic.sh
+    command:
+      - bash
+      - -c
+      - |
+        /etc/confluent/docker/run &
+        echo "Waiting for Kafka to start..."
+        for i in {1..15}; do
+          kafka-metadata-quorum --bootstrap-server kafka:29092 --list > /dev/null 2>&1 && break
+          echo "Kafka not ready yet..."
+          sleep 2
+        done
+        echo "Kafka is ready. Creating topics..."
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists \
+          --topic sms-messages --partitions 1 --replication-factor 1
+        echo "Topic creation done."
+        wait
+
+  mongodb:
+    image: mongo:4.4.18
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: sms_db
+    volumes:
+      - mongodb-data:/data/db
+
+  phishing-defender:
+    image: cezaryiwan/phishing-defender:latest
+    depends_on:
+      - kafka
+      - mongodb
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: 27017
+      MONGODB_DATABASE: sms_db
+    ports:
+      - "8080:8080"
+
+volumes:
+  kafka-data:
+  mongodb-data:
