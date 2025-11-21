@@ -22,6 +22,11 @@ public class PhishingDetectorService {
                 .orElse(false);
     }
 
+    /**
+     * Returning a false value when exception thrown is here by design
+     * I expect to get exceptions frequently, since actual communication
+     * with Web Risk API is not required
+     */
     private boolean checkUrlForPhishing(String url) {
         try {
             String requestBody = String.format("{\"uri\": \"%s\"}", url);

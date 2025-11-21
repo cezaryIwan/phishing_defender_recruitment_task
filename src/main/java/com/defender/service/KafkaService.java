@@ -4,7 +4,6 @@ import com.defender.model.SmsMessage;
 import com.defender.config.ConfigProvider;
 import com.defender.util.UrlExtractor;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;

@@ -18,8 +18,8 @@ public class SmsController {
     private final MongoService mongoService;
     private static final String SUBSCRIPTION_NUMBER = "000000000";
 
-    public SmsController(KafkaService kafkaService, MongoService mongoService, ObjectMapper objectMapper) throws IOException {
-        this.server = HttpServer.create(new InetSocketAddress(8080), 0);
+    public SmsController(KafkaService kafkaService, MongoService mongoService, ObjectMapper objectMapper, HttpServer server) throws IOException {
+        this.server = server;
         this.objectMapper = objectMapper;
         this.kafkaService = kafkaService;
         this.mongoService = mongoService;
@@ -27,7 +27,7 @@ public class SmsController {
         server.createContext("/sms", this::handleSmsRequest);
     }
 
-    private void handleSmsRequest(HttpExchange exchange) throws IOException {
+    void handleSmsRequest(HttpExchange exchange) throws IOException {
         if (!"POST".equals(exchange.getRequestMethod())) {
             exchange.sendResponseHeaders(405, -1);
             exchange.close();

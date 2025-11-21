@@ -6,9 +6,11 @@ import com.defender.service.KafkaService;
 import com.defender.service.MongoService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.client.MongoClients;
+import com.sun.net.httpserver.HttpServer;
 
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 
 public class PhishingDefenderApplication {
     public static void main(String[] args) throws IOException {
@@ -19,7 +21,7 @@ public class PhishingDefenderApplication {
         MongoService mongoService = new MongoService(MongoClients.create(connectionString), objectMapper);
 
         KafkaService kafkaService = new KafkaService(mongoService, objectMapper);
-        SmsController smsController = new SmsController(kafkaService, mongoService, objectMapper);
+        SmsController smsController = new SmsController(kafkaService, mongoService, objectMapper, HttpServer.create(new InetSocketAddress(8080), 0));
 
         kafkaService.start();
         smsController.start();
