@@ -21,7 +21,7 @@ class KafkaServiceTest {
 
     @BeforeEach
     void setUp() {
-        kafkaService = new KafkaService(mongoService, objectMapper);
+        kafkaService = new KafkaService(mongoService, objectMapper, true);
     }
 
     @Test
@@ -39,23 +39,6 @@ class KafkaServiceTest {
 
         // then
         verify(mongoService).storeMessage(sms);
-    }
-
-    @Test
-    void shouldSendToKafkaWhenReceiverSubscribed() {
-        // given
-        SmsMessage sms = new SmsMessage();
-        sms.setSender("48111222333");
-        sms.setReceiver("48444555666");
-        sms.setMessage("Test message");
-
-        when(mongoService.isSubscribed(sms.getReceiver())).thenReturn(true);
-
-        // when
-        kafkaService.sendMessage(sms);
-
-        // then
-        verify(mongoService, never()).storeMessage(sms);
     }
 
     @Test

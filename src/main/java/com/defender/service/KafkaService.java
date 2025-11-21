@@ -4,6 +4,9 @@ import com.defender.model.SmsMessage;
 import com.defender.config.ConfigProvider;
 import com.defender.util.UrlExtractor;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.ListTopicsOptions;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
@@ -13,6 +16,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
 
 import java.net.http.HttpClient;
+import java.util.List;
 import java.util.Properties;
 
 public class KafkaService {
@@ -24,33 +28,36 @@ public class KafkaService {
     private final MongoService mongoService;
     private final PhishingDetectorService phishingDetector;
 
-    public KafkaService(MongoService mongoService, ObjectMapper objectMapper) {
+    public KafkaService(MongoService mongoService, ObjectMapper objectMapper, boolean testMode) {
         this.objectMapper = objectMapper;
         this.mongoService = mongoService;
         this.phishingDetector = new PhishingDetectorService(HttpClient.newHttpClient(), new UrlExtractor());
 
-        Properties streamProps = new Properties();
-        streamProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "phishing-detector");
-        streamProps.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, ConfigProvider.getKafkaBootstrapServers());
-        streamProps.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG,
-                org.apache.kafka.common.serialization.Serdes.StringSerde.class);
-        streamProps.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG,
-                org.apache.kafka.common.serialization.Serdes.StringSerde.class);
+        if (!testMode) {
+            Properties streamProps = new Properties();
+            streamProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "phishing-detector");
+            streamProps.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, ConfigProvider.getKafkaBootstrapServers());
+            streamProps.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG,
+                    org.apache.kafka.common.serialization.Serdes.StringSerde.class);
+            streamProps.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG,
+                    org.apache.kafka.common.serialization.Serdes.StringSerde.class);
 
-        System.out.println("Kafka config: " + streamProps);
-        Properties producerProps = new Properties();
-        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                ConfigProvider.getKafkaBootstrapServers());
-        producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-                "org.apache.kafka.common.serialization.StringSerializer");
-        producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-                "org.apache.kafka.common.serialization.StringSerializer");
+            StreamsBuilder builder = new StreamsBuilder();
+            buildTopology(builder);
+            this.streams = new KafkaStreams(builder.build(), streamProps);
 
-        StreamsBuilder builder = new StreamsBuilder();
-        buildTopology(builder);
-
-        this.streams = new KafkaStreams(builder.build(), streamProps);
-        this.producer = new KafkaProducer<>(producerProps);
+            Properties producerProps = new Properties();
+            producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                    ConfigProvider.getKafkaBootstrapServers());
+            producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+                    "org.apache.kafka.common.serialization.StringSerializer");
+            producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+                    "org.apache.kafka.common.serialization.StringSerializer");
+            this.producer = new KafkaProducer<>(producerProps);
+        } else {
+            this.streams = null;
+            this.producer = null;
+        }
     }
 
     private void buildTopology(StreamsBuilder builder) {
@@ -75,6 +82,33 @@ public class KafkaService {
                     System.out.println("Storing message in MongoDB: " + sms);
                     mongoService.storeMessage(sms);
                 });
+    }
+
+    private void waitForKafkaReady() {
+        Properties props = new Properties();
+        props.put("bootstrap.servers", ConfigProvider.getKafkaBootstrapServers());
+        try (AdminClient admin = AdminClient.create(props)) {
+            boolean ready = false;
+            for (int i = 0; i < 20; i++) {
+                try {
+                    if (admin.listTopics(new ListTopicsOptions().timeoutMs(2000)).names().get().contains(INPUT_TOPIC)) {
+                        ready = true;
+                        break;
+                    }
+                } catch (Exception e) {
+                    Thread.sleep(2000);
+                }
+                Thread.sleep(2000);
+            }
+            if (!ready) {
+                System.out.println("Topic not found, creating it...");
+                admin.createTopics(List.of(
+                        new NewTopic(INPUT_TOPIC, 1, (short)1)
+                )).all().get();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to ensure Kafka is ready", e);
+        }
     }
 
     public void sendMessage(SmsMessage sms) {
@@ -103,6 +137,7 @@ public class KafkaService {
     }
 
     public void start() {
+        waitForKafkaReady();
         System.out.println("Starting Kafka Streams...");
         streams.start();
         System.out.println("Kafka Streams started");

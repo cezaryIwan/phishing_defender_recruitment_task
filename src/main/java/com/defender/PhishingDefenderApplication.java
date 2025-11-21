@@ -20,7 +20,7 @@ public class PhishingDefenderApplication {
                 ConfigProvider.getMongoPort());
         MongoService mongoService = new MongoService(MongoClients.create(connectionString), objectMapper);
 
-        KafkaService kafkaService = new KafkaService(mongoService, objectMapper);
+        KafkaService kafkaService = new KafkaService(mongoService, objectMapper, false);
         SmsController smsController = new SmsController(kafkaService, mongoService, objectMapper, HttpServer.create(new InetSocketAddress(8080), 0));
 
         kafkaService.start();

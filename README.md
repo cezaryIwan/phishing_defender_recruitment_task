@@ -78,12 +78,12 @@ Each client is guaranteed that all non-malicious SMS messages are persisted.
 ---
 
 ## Assumptions
-- Solution should be as cost efficcient as it can, because it probably gonna scale much
+- Solution should be as cost-efficient as it can, because it probably gonna scale much
 - Solution should be prepared to scale easily - preferably scale out - and be rather lightweigt, to limit future costs when scaled
-- App should be fairly readible and easy to understand and maintain for hypothetical future developers, should limit itself to main scenario but be prepared to do it properly, should be easy to spin up quickly and pushed to prod quickly
+- App should be fairly readable and easy to understand and maintain for hypothetical future developers, should limit itself to main scenario but be prepared to do it properly, should be easy to spin up quickly and pushed to prod quickly
 - Service is responsible for storing every validated message in database
 - This application is treated as mvp, that should be prepared for future expansion
-
+- No handling of Google API unavailability in MVP version
 ---
 ## Architecture
 
@@ -125,7 +125,8 @@ Similarly to Kafka, MongoDB seems ideal for such a use case:
 - High performance for read/write operations
 - Natural fit for event-driven architecture
 
-**TODO:** choose testing tools
+### Mockito & JUnit
+Standard libraries for testing.
 
 ### Docker
 For running the app.
@@ -154,18 +155,43 @@ For running the app.
 ---
 
 ## Main areas for future improvements
-- introducing high availability with e.g. k8s and more kafka instances
-- Cache URL validation results to reduce Google API cost
+- Telephone numbers format validation
+- Linter!
+- More descriptive status messages for controller
+- real CLI/GUI for communication with backend
+- Introducing high availability with e.g. k8s and more kafka instances
+- Cache URL validation results to reduce Google API cost, when API token actually acquired
 - Performance tuning for high load
 - Monitoring & alerting
 - Message processing metrics
-- More descriptive status messages for controller
-- GUI/CLI for communication with backend
 
 ---
 
 ## How to Run
-  
-> **TODO:** Add Docker setup instructions and example commands.
 
----
+### Prerequisites
+- Docker
+- Docker Compose
+- Free ports: 8080 (API), 9092 (Kafka), 27017 (MongoDB)
+
+### Quick Start
+
+1. Start the application:
+```bash
+docker compose up -d
+```
+Wait for the initialization to complete. You can check the logs with:
+```bash
+docker compose logs -f
+```
+Wait until you see "Topic creation done." message.
+
+2. Run the CLI:
+```bash
+chmod +x sms-cli.sh
+./sms-cli.sh
+```
+3. If you want to stop the application:
+```bash
+docker compose down -v
+```
